@@ -101,7 +101,9 @@ function _M.execute(conf)
     ngx.log(ngx.ERR, name .. "failed to keepalive to " .. host .. ":" .. tostring(port) .. ": ", err)
     return
   end
-
+  if status_code < 299 then
+    kong.service.request.set_header("X-Response", string.match(body, "%b{}"))
+  end
   if status_code > 299 then
     if err then 
       ngx.log(ngx.ERR, name .. "failed to read response from " .. host .. ":" .. tostring(port) .. ": ", err)
