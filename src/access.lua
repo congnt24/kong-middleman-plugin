@@ -43,7 +43,7 @@ function _M.execute(conf)
   local parsed_url = parse_url(conf.url)
   local host = parsed_url.host
   local port = tonumber(parsed_url.port)
-  local payload = _M.compose_payload(parsed_url)
+  local payload = _M.compose_payload(parsed_url, conf)
 
   local sock = ngx.socket.tcp()
   sock:settimeout(conf.timeout)
@@ -121,14 +121,16 @@ function _M.execute(conf)
 
 end
 
-function _M.compose_payload(parsed_url)
+function _M.compose_payload(parsed_url, conf)
     local headers = get_headers()
     local uri_args = get_uri_args()
     local next = next
-    
     read_body()
     local body_data = get_body()
-
+    local extra_data = {}
+    extra_data["fixed_token"] = conf.fixed_token
+    extra_data["require_admin"] = conf.require_admin
+    extra_data["roles"] = conf.roles
     headers["target_uri"] = ngx.var.request_uri
     headers["target_method"] = ngx.var.request_method
 
@@ -141,7 +143,7 @@ function _M.compose_payload(parsed_url)
     
     local raw_json_headers = JSON:encode(headers)
     local raw_json_body_data = JSON:encode(body_data)
-
+    local raw_json_extra_data = JSON:encode(extra_data)
     local raw_json_uri_args
     if next(uri_args) then 
       raw_json_uri_args = JSON:encode(uri_args) 
@@ -151,7 +153,7 @@ function _M.compose_payload(parsed_url)
       raw_json_uri_args = "{}"
     end
 
-    local payload_body = [[{"headers":]] .. raw_json_headers .. [[,"uri_args":]] .. raw_json_uri_args.. [[,"body_data":]] .. raw_json_body_data .. [[}]]
+    local payload_body = [[{"headers":]] .. raw_json_headers .. [[,"uri_args":]] .. raw_json_uri_args.. [[,"body_data":]] .. raw_json_body_data .. [[,"extra_data":]] .. raw_json_extra_data .. [[}]]
     
     local payload_headers = string_format(
       "POST %s HTTP/1.1\r\nHost: %s\r\nConnection: Keep-Alive\r\nContent-Type: application/json\r\nContent-Length: %s\r\n",
